@@ -1,147 +1,328 @@
 'use client';
 
-import LoginButton from '@/components/LoginButton';
-import WalletInfo from '@/components/WalletInfo';
-import StoryChainStatus from '@/components/StoryChainStatus';
+import Header from '@/components/Header';
+import PricingCard from '@/components/PricingCard';
+import Dashboard from '@/components/Dashboard';
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
+import { useSubscription } from '@/hooks/useSubscription';
+import { loadStripe } from '@stripe/stripe-js';
+import { useState } from 'react';
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
+const pricingPlans = [
+  {
+    name: 'CREADOR',
+    price: 5,
+    originalPrice: 10,
+    yearlyPrice: 60,
+    registrations: 4,
+    registrationValue: 20,
+    features: [
+      'Hasta 4 registros por mes',
+      'Enlace único a portafolio CREADOR',
+      'Presencia en sección CREADORES del store global',
+      'Soporte vía email y asesoramiento',
+      'Rastreo básico de registros y obras derivadas',
+    ],
+  },
+  {
+    name: 'PROFESIONAL',
+    price: 19,
+    originalPrice: 50,
+    yearlyPrice: 228,
+    registrations: 20,
+    registrationValue: 100,
+    features: [
+      'Hasta 20 registros mensuales',
+      'Enlace personalizado a portafolio PROFESIONAL',
+      'Presencia destacada en sección PROFESIONALES',
+      'Soporte prioritario por chat o email',
+      'Rastreo detallado de registros, remixes y regalías',
+      'Control y revocación de accesos compartidos',
+    ],
+    popular: true,
+  },
+  {
+    name: 'ELITE',
+    price: 49,
+    originalPrice: 150,
+    yearlyPrice: 588,
+    registrations: 100,
+    registrationValue: 500,
+    features: [
+      'Hasta 100 registros mensuales',
+      'Portafolio ELITE con oportunidades de licenciamiento',
+      'Soporte premium con asesoramiento para monetización',
+      'Análisis detallado de impacto e ingresos',
+      'Control total de accesos al portafolio compartido',
+    ],
+  },
+];
 
 export default function Home() {
   const { user } = useDynamicContext();
+  const { hasActiveSubscription } = useSubscription();
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async (planName: string, isYearly: boolean) => {
+    if (!user?.email) {
+      alert('Por favor, conecta tu wallet primero');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          planName,
+          isYearly,
+          userEmail: user.email,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Redirigir a Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error: any) {
+      console.error('Error:', error);
+      alert('Error al crear la sesión de pago: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <main className="container">
-      <div className="content">
-        <div className="logo-container">
-          <img
-            src="https://www.manna.art/wp-content/uploads/2025/11/manna_logo_stripe.png"
-            alt="Manna Art Logo"
-            className="logo"
-          />
-        </div>
-        <p className="subtitle">Login con Dynamic.xyz para Story Protocol</p>
+    <>
+      <Header />
 
-        <div className="login-section">
-          <LoginButton />
-        </div>
+      {hasActiveSubscription ? (
+        <Dashboard />
+      ) : (
+        <main className="container">
+          <section className="hero-section">
+            <h1 className="hero-title">Protege tu Arte con Story Protocol</h1>
+            <p className="hero-subtitle">
+              Registra tu obra en blockchain, obtén regalías automáticas y mantén el control total de tus creaciones
+            </p>
+          </section>
 
-        {user && (
-          <div className="wallet-section">
-            <WalletInfo />
-            <StoryChainStatus />
+          <section className="pricing-section">
+          <div className="section-header">
+            <h2 className="section-title">Planes de Suscripción</h2>
+            <p className="section-description">
+              Elige el plan que mejor se adapte a tus necesidades como creador
+            </p>
           </div>
-        )}
 
-        <div className="info-card">
-          <h2>Características</h2>
-          <ul>
-            <li>Autenticación segura con Dynamic.xyz</li>
-            <li>Soporte para múltiples wallets (MetaMask, WalletConnect, etc.)</li>
-            <li>Integración con Story Protocol Odyssey Testnet</li>
-            <li>Gestión de identidad Web3</li>
-          </ul>
-        </div>
-      </div>
+          <div className="pricing-grid">
+            {pricingPlans.map((plan) => (
+              <PricingCard
+                key={plan.name}
+                plan={plan}
+                onSubscribe={handleSubscribe}
+              />
+            ))}
+          </div>
+
+          {loading && (
+            <div className="loading-overlay">
+              <div className="spinner"></div>
+              <p>Procesando...</p>
+            </div>
+          )}
+          </section>
+
+          <section className="features-section">
+          <h2 className="features-title">¿Por qué elegir Manna Art?</h2>
+          <div className="features-grid">
+            <div className="feature-card">
+              <div className="feature-icon">🔒</div>
+              <h3>Registro Inmutable</h3>
+              <p>Tu obra queda registrada permanentemente en blockchain con prueba de autoría</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">💰</div>
+              <h3>Regalías Automáticas</h3>
+              <p>Recibe ingresos cada vez que tu obra sea utilizada o licenciada</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">🌐</div>
+              <h3>Portafolio Global</h3>
+              <p>Presencia en nuestro marketplace con alcance internacional</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">⚡</div>
+              <h3>Control Total</h3>
+              <p>Gestiona accesos, permisos y licencias de tus creaciones</p>
+            </div>
+          </div>
+          </section>
+        </main>
+      )}
 
       <style jsx>{`
         .container {
-          min-height: 100vh;
-          padding: 3.5rem 2rem;
+          min-height: calc(100vh - 80px);
+          padding: 4rem 2rem;
+        }
+        .hero-section {
+          max-width: 1460px;
+          margin: 0 auto 5rem;
+          text-align: center;
+          padding: 3rem 0;
+        }
+        .hero-title {
+          font-size: 3.5rem;
+          font-weight: 700;
+          color: #030a18;
+          margin: 0 0 1.5rem 0;
+          letter-spacing: -0.02em;
+          line-height: 1.2;
+        }
+        .hero-subtitle {
+          font-size: 1.25rem;
+          color: #666666;
+          max-width: 800px;
+          margin: 0 auto;
+          line-height: 1.6;
+        }
+        .pricing-section {
+          max-width: 1460px;
+          margin: 0 auto 5rem;
+          position: relative;
+        }
+        .section-header {
+          text-align: center;
+          margin-bottom: 4rem;
+        }
+        .section-title {
+          font-size: 2.5rem;
+          font-weight: 700;
+          color: #030a18;
+          margin: 0 0 1rem 0;
+        }
+        .section-description {
+          font-size: 1.125rem;
+          color: #666666;
+          margin: 0;
+        }
+        .pricing-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+          gap: 2.5rem;
+          margin-bottom: 3rem;
+        }
+        .loading-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(252, 245, 231, 0.95);
           display: flex;
+          flex-direction: column;
           justify-content: center;
           align-items: center;
+          gap: 1rem;
+          z-index: 1000;
         }
-        .content {
-          max-width: 1460px;
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 3rem;
+        .spinner {
+          width: 50px;
+          height: 50px;
+          border: 4px solid rgba(3, 10, 24, 0.1);
+          border-top-color: #ffe152;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
         }
-        .logo-container {
-          width: 100%;
-          max-width: 400px;
-          margin-bottom: 1rem;
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
-        .logo {
-          width: 100%;
-          height: auto;
-          display: block;
-        }
-        .subtitle {
+        .loading-overlay p {
           font-size: 1.125rem;
-          color: #999999;
+          color: #030a18;
+          font-weight: 600;
+        }
+        .features-section {
+          max-width: 1460px;
+          margin: 0 auto;
+          padding: 4rem 0;
+        }
+        .features-title {
+          font-size: 2.5rem;
+          font-weight: 700;
+          color: #030a18;
           text-align: center;
-          margin: 0;
-          font-weight: 400;
+          margin: 0 0 3rem 0;
         }
-        .login-section {
-          margin: 2rem 0;
+        .features-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 2rem;
         }
-        .wallet-section {
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1.5rem;
-        }
-        .info-card {
+        .feature-card {
           background: #ffffff;
           padding: 2.5rem;
           border-radius: 0.28rem;
           border: 1px solid rgba(3, 10, 24, 0.08);
-          width: 100%;
-          max-width: 600px;
-          box-shadow: 0 1px 3px rgba(3, 10, 24, 0.05);
+          text-align: center;
           transition: all 0.2s ease;
         }
-        .info-card:hover {
-          box-shadow: 0 4px 12px rgba(3, 10, 24, 0.08);
+        .feature-card:hover {
+          border-color: #ffe152;
+          box-shadow: 0 8px 24px rgba(3, 10, 24, 0.08);
+          transform: translateY(-4px);
         }
-        .info-card h2 {
-          color: #030a18;
-          margin-bottom: 1.5rem;
-          font-size: 1.5rem;
+        .feature-icon {
+          font-size: 3rem;
+          margin-bottom: 1rem;
+        }
+        .feature-card h3 {
+          font-size: 1.25rem;
           font-weight: 600;
+          color: #030a18;
+          margin: 0 0 1rem 0;
         }
-        .info-card ul {
-          list-style: none;
-          padding: 0;
-        }
-        .info-card li {
-          padding: 1rem 0;
+        .feature-card p {
+          font-size: 1rem;
           color: #666666;
-          border-bottom: 1px solid rgba(3, 10, 24, 0.06);
-          position: relative;
-          padding-left: 1.8rem;
           line-height: 1.6;
-        }
-        .info-card li:last-child {
-          border-bottom: none;
-        }
-        .info-card li::before {
-          content: '✓';
-          position: absolute;
-          left: 0;
-          color: #ffe152;
-          font-weight: bold;
-          font-size: 1.1rem;
+          margin: 0;
         }
         @media (max-width: 768px) {
-          .logo-container {
-            max-width: 280px;
-          }
-          .subtitle {
-            font-size: 1rem;
-          }
           .container {
             padding: 2rem 1rem;
           }
-          .info-card {
-            padding: 1.8rem;
+          .hero-title {
+            font-size: 2.25rem;
+          }
+          .hero-subtitle {
+            font-size: 1.125rem;
+          }
+          .section-title {
+            font-size: 2rem;
+          }
+          .features-title {
+            font-size: 2rem;
+          }
+          .pricing-grid {
+            grid-template-columns: 1fr;
+            gap: 2rem;
           }
         }
       `}</style>
-    </main>
+    </>
   );
 }
