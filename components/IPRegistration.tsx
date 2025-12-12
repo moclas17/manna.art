@@ -2,20 +2,36 @@
 
 import { useState } from 'react';
 import { Subscription } from '@/hooks/useSubscription';
+import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 
 interface IPRegistrationProps {
   subscription: Subscription;
 }
 
+interface RegistrationResult {
+  fileUrl: string;
+  fileId: string;
+  metadataUrl: string;
+  metadataId: string;
+  registrationsUsed: number;
+  registrationsLimit: number;
+  message: string;
+}
+
 export default function IPRegistration({ subscription }: IPRegistrationProps) {
+  const { user, primaryWallet } = useDynamicContext();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     fileType: 'image',
     file: null as File | null,
+    licenseFee: '0', // Precio de licencia en ETH
+    commercialRevShare: '10', // Porcentaje de royalty por defecto 10%
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [result, setResult] = useState<RegistrationResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const canRegister = subscription.registrationsUsed < subscription.registrationsLimit;
 
@@ -27,29 +43,65 @@ export default function IPRegistration({ subscription }: IPRegistrationProps) {
       return;
     }
 
+    if (!user?.email) {
+      alert('Por favor, conecta tu wallet primero');
+      return;
+    }
+
+    if (!primaryWallet?.address) {
+      alert('No se pudo obtener la dirección de tu wallet');
+      return;
+    }
+
     setLoading(true);
     setSuccess(false);
+    setError(null);
 
     try {
-      // TODO: Implementar registro en Story Protocol
-      // Por ahora solo simulamos el registro
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Crear FormData para enviar el archivo
+      const formDataToSend = new FormData();
+      formDataToSend.append('email', user.email);
+      formDataToSend.append('title', formData.title);
+      formDataToSend.append('description', formData.description);
+      formDataToSend.append('ipType', formData.fileType);
+      formDataToSend.append('walletAddress', primaryWallet.address);
+      formDataToSend.append('licenseFee', formData.licenseFee);
+      formDataToSend.append('commercialRevShare', formData.commercialRevShare);
+
+      if (formData.file) {
+        formDataToSend.append('file', formData.file);
+      }
+
+      // Enviar al endpoint de registro
+      const response = await fetch('/api/register-ip', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al registrar la obra');
+      }
 
       setSuccess(true);
+      setResult(data.data);
       setFormData({
         title: '',
         description: '',
         fileType: 'image',
         file: null,
+        licenseFee: '0',
+        commercialRevShare: '10',
       });
 
-      // Recargar la página después de 2 segundos para actualizar el conteo
+      // Recargar la página después de 3 segundos para actualizar el conteo
       setTimeout(() => {
         window.location.reload();
-      }, 2000);
-    } catch (error) {
+      }, 3000);
+    } catch (error: any) {
       console.error('Error registering IP:', error);
-      alert('Error al registrar la obra. Por favor, intenta de nuevo.');
+      setError(error.message || 'Error al registrar la obra. Por favor, intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -76,10 +128,30 @@ export default function IPRegistration({ subscription }: IPRegistrationProps) {
           </div>
         )}
 
-        {success && (
+        {error && (
+          <div className="error-message">
+            <strong>❌ Error</strong>
+            <p>{error}</p>
+          </div>
+        )}
+
+        {success && result && (
           <div className="success-message">
             <strong>✓ ¡Registro exitoso!</strong>
-            <p>Tu obra ha sido registrada en Story Protocol. Actualizando...</p>
+            <p>{result.message}</p>
+            <div className="result-links">
+              <p><strong>Archivo en Arweave:</strong></p>
+              <a href={result.fileUrl} target="_blank" rel="noopener noreferrer" className="arweave-link">
+                {result.fileUrl}
+              </a>
+              <p><strong>Metadata en Arweave:</strong></p>
+              <a href={result.metadataUrl} target="_blank" rel="noopener noreferrer" className="arweave-link">
+                {result.metadataUrl}
+              </a>
+              <p className="usage-info">
+                Registros usados: {result.registrationsUsed}/{result.registrationsLimit}
+              </p>
+            </div>
           </div>
         )}
 
@@ -156,6 +228,53 @@ export default function IPRegistration({ subscription }: IPRegistrationProps) {
             </div>
           </div>
 
+          <div className="license-section">
+            <h3 className="section-title">Configuración de Licencia</h3>
+            <p className="section-subtitle">Define los términos comerciales para tu obra</p>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="licenseFee" className="form-label">
+                  Precio de Licencia (USD)
+                </label>
+                <input
+                  type="number"
+                  id="licenseFee"
+                  className="form-input"
+                  value={formData.licenseFee}
+                  onChange={(e) => setFormData({ ...formData, licenseFee: e.target.value })}
+                  placeholder="0.0"
+                  step="0.001"
+                  min="0"
+                  disabled={!canRegister || loading}
+                />
+                <p className="field-help">
+                  Costo que otros pagarán para licenciar tu obra (0 = gratis)
+                </p>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="commercialRevShare" className="form-label">
+                  Royalty Comercial (%)
+                </label>
+                <input
+                  type="number"
+                  id="commercialRevShare"
+                  className="form-input"
+                  value={formData.commercialRevShare}
+                  onChange={(e) => setFormData({ ...formData, commercialRevShare: e.target.value })}
+                  placeholder="10"
+                  min="0"
+                  max="100"
+                  disabled={!canRegister || loading}
+                />
+                <p className="field-help">
+                  Porcentaje de ingresos que recibirás de uso comercial
+                </p>
+              </div>
+            </div>
+          </div>
+
           <button type="submit" className="submit-btn" disabled={!canRegister || loading}>
             {loading ? 'Registrando...' : 'Registrar Obra en Story Protocol'}
           </button>
@@ -207,6 +326,23 @@ export default function IPRegistration({ subscription }: IPRegistrationProps) {
           font-size: 0.9375rem;
           margin: 0;
         }
+        .error-message {
+          background: #ffebee;
+          border: 1px solid #ef9a9a;
+          border-radius: 0.28rem;
+          padding: 1.25rem;
+          margin-bottom: 2rem;
+        }
+        .error-message strong {
+          display: block;
+          color: #c62828;
+          margin-bottom: 0.5rem;
+        }
+        .error-message p {
+          color: #c62828;
+          font-size: 0.9375rem;
+          margin: 0;
+        }
         .success-message {
           background: #e8f5e9;
           border: 1px solid #a5d6a7;
@@ -222,7 +358,33 @@ export default function IPRegistration({ subscription }: IPRegistrationProps) {
         .success-message p {
           color: #1b5e20;
           font-size: 0.9375rem;
-          margin: 0;
+          margin: 0 0 0.5rem 0;
+        }
+        .result-links {
+          margin-top: 1rem;
+          padding-top: 1rem;
+          border-top: 1px solid #a5d6a7;
+        }
+        .result-links p {
+          margin: 0.5rem 0 0.25rem 0;
+          font-size: 0.875rem;
+        }
+        .arweave-link {
+          display: block;
+          color: #1b5e20;
+          font-size: 0.875rem;
+          word-break: break-all;
+          text-decoration: underline;
+          margin-bottom: 1rem;
+        }
+        .arweave-link:hover {
+          color: #2e7d32;
+        }
+        .usage-info {
+          margin-top: 1rem;
+          padding-top: 0.75rem;
+          border-top: 1px solid #a5d6a7;
+          font-weight: 600;
         }
         .registration-form {
           display: flex;
@@ -312,9 +474,40 @@ export default function IPRegistration({ subscription }: IPRegistrationProps) {
           color: rgba(3, 10, 24, 0.4);
           cursor: not-allowed;
         }
+        .license-section {
+          background: rgba(255, 225, 82, 0.05);
+          border: 1px solid rgba(255, 225, 82, 0.2);
+          border-radius: 0.28rem;
+          padding: 1.5rem;
+          margin-top: 0.5rem;
+        }
+        .section-title {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #030a18;
+          margin: 0 0 0.5rem 0;
+        }
+        .section-subtitle {
+          font-size: 0.875rem;
+          color: #666666;
+          margin: 0 0 1.25rem 0;
+        }
+        .form-row {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1.5rem;
+        }
+        .field-help {
+          font-size: 0.8125rem;
+          color: #666666;
+          margin: 0.25rem 0 0 0;
+        }
         @media (max-width: 768px) {
           .ip-registration {
             padding: 1.5rem;
+          }
+          .form-row {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>

@@ -2,23 +2,56 @@
 
 import LoginButton from '@/components/LoginButton';
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function Header() {
   const { user, primaryWallet } = useDynamicContext();
   const [showDropdown, setShowDropdown] = useState(false);
+  const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <>
       <header className="header">
         <div className="header-content">
-          <div className="logo-section">
+          <Link href="/" className="logo-section">
             <img
               src="https://www.manna.art/wp-content/uploads/2025/11/manna_logo_stripe.png"
               alt="Manna Art Logo"
               className="logo"
             />
-          </div>
+          </Link>
+
+          {mounted && (
+            <nav className="nav-links">
+              <Link
+                href="/"
+                className={`nav-link ${pathname === '/' ? 'active' : ''}`}
+              >
+                Inicio
+              </Link>
+              {user && primaryWallet && (
+                <Link
+                  href="/my-artworks"
+                  className={`nav-link ${pathname === '/my-artworks' ? 'active' : ''}`}
+                >
+                  Mis Obras
+                </Link>
+              )}
+              <Link
+                href="/pricing"
+                className={`nav-link ${pathname === '/pricing' ? 'active' : ''}`}
+              >
+                Planes
+              </Link>
+            </nav>
+          )}
 
           <div className="auth-section">
             {user && primaryWallet ? (
@@ -73,7 +106,7 @@ export default function Header() {
           top: 0;
           background: #ffffff;
           border-bottom: 1px solid rgba(3, 10, 24, 0.08);
-          padding: 1.25rem 2rem;
+          padding: 0.75rem 2rem;
           z-index: 100;
           box-shadow: 0 1px 3px rgba(3, 10, 24, 0.05);
         }
@@ -83,14 +116,41 @@ export default function Header() {
           display: flex;
           justify-content: space-between;
           align-items: center;
+          gap: 2rem;
         }
         .logo-section {
-          max-width: 200px;
+          max-width: 140px;
+          text-decoration: none;
+          flex-shrink: 0;
         }
         .logo {
           width: 100%;
           height: auto;
           display: block;
+        }
+        .nav-links {
+          display: flex;
+          align-items: center;
+          gap: 2rem;
+          flex: 1;
+        }
+        .nav-link {
+          font-size: 1rem;
+          font-weight: 500;
+          color: #666666;
+          text-decoration: none;
+          padding: 0.5rem 1rem;
+          border-radius: 0.375rem;
+          transition: all 0.2s ease;
+        }
+        .nav-link:hover {
+          color: #030a18;
+          background: rgba(255, 225, 82, 0.1);
+        }
+        .nav-link.active {
+          color: #030a18;
+          font-weight: 600;
+          background: rgba(255, 225, 82, 0.15);
         }
         .auth-section {
           display: flex;

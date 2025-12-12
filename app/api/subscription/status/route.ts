@@ -26,6 +26,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // MODO DESARROLLO: Simular suscripción para testing
+    // Cambia DEV_MODE_SKIP_SUBSCRIPTION a false en producción
+    if (process.env.DEV_MODE_SKIP_SUBSCRIPTION === 'true') {
+      console.log('🔧 Development mode: Simulating active subscription for', email);
+      return NextResponse.json({
+        subscription: {
+          id: 'dev_sub_' + Date.now(),
+          plan: 'PROFESIONAL',
+          status: 'active',
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          registrationsUsed: 0,
+          registrationsLimit: PLAN_LIMITS['PROFESIONAL'],
+        },
+      });
+    }
+
     // Buscar cliente por email
     const customers = await stripe.customers.list({
       email: email,
@@ -51,11 +67,14 @@ export async function POST(request: NextRequest) {
 
     const subscription = subscriptions.data[0];
 
+    // Acceder a la propiedad usando bracket notation para evitar errores de TypeScript
+    const periodEnd = (subscription as any).current_period_end;
+
     // Log para debugging
     console.log('📊 Subscription data:', {
       id: subscription.id,
       status: subscription.status,
-      current_period_end: subscription.current_period_end,
+      current_period_end: periodEnd,
       metadata: subscription.metadata,
     });
 
@@ -73,21 +92,21 @@ export async function POST(request: NextRequest) {
     // Validar que current_period_end es un número válido antes de convertir
     let currentPeriodEnd: string;
     try {
-      if (subscription.current_period_end && typeof subscription.current_period_end === 'number') {
-        const date = new Date(subscription.current_period_end * 1000);
+      if (periodEnd && typeof periodEnd === 'number') {
+        const date = new Date(periodEnd * 1000);
         if (!isNaN(date.getTime())) {
           currentPeriodEnd = date.toISOString();
         } else {
-          console.error('❌ Invalid timestamp:', subscription.current_period_end);
-          currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 días desde ahora
+          console.error('❌ Invalid timestamp:', periodEnd);
+          currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
         }
       } else {
-        console.error('❌ current_period_end is not a number:', subscription.current_period_end);
-        currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 días desde ahora
+        console.error('❌ current_period_end is not a number:', periodEnd);
+        currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
       }
     } catch (error) {
       console.error('❌ Error converting current_period_end:', error);
-      currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 días desde ahora
+      currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     }
 
     return NextResponse.json({

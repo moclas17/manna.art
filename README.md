@@ -121,18 +121,35 @@ Dynamic.xyz proporciona:
 - [Viem](https://viem.sh/) - Libreria de Ethereum
 - [TypeScript](https://www.typescriptlang.org/) - Tipado estatico
 
-## Siguientes Pasos
+## Story Protocol - Configuración Inicial
 
-Para integrar completamente con Story Protocol, puedes:
+### ⚠️ Error al Registrar Obras de Arte?
 
-1. Instalar el SDK de Story Protocol:
+Si obtienes el error `Workflow__CallerNotAuthorizedToMint`, necesitas crear tu propio SPG (Story Protocol Gateway).
+
+**Solución rápida**: Ver [QUICK_START.md](./QUICK_START.md)
+
+**Documentación completa**: Ver [STORY_PROTOCOL_SETUP.md](./STORY_PROTOCOL_SETUP.md)
+
+### Verificar Balance y Configuración
+
 ```bash
-npm install @story-protocol/core-sdk
+node scripts/check-wallet-simple.js
 ```
 
-2. Implementar funcionalidades de IP Assets
-3. Crear y gestionar licencias
-4. Registrar contenido en la blockchain
+### Crear tu SPG Personalizado
+
+```bash
+npx tsx scripts/create-spg.ts
+```
+
+## Scripts Disponibles
+
+- `npm run dev` - Ejecutar en modo desarrollo
+- `npm run build` - Compilar para producción
+- `npm start` - Ejecutar en producción
+- `node scripts/check-wallet-simple.js` - Verificar wallet del servidor
+- `npx tsx scripts/create-spg.ts` - Crear SPG personalizado
 
 ## Recursos
 
