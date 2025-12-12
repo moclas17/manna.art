@@ -14,8 +14,14 @@ export function useStoryProtocol() {
       if (primaryWallet) {
         try {
           const network = await primaryWallet.connector.getNetwork();
-          setChainId(network);
-          setIsConnectedToStory(isStoryChain(network));
+          if (typeof network === 'number') {
+            setChainId(network);
+            setIsConnectedToStory(isStoryChain(network));
+          } else if (typeof network === 'string') {
+            const chainIdNum = parseInt(network, 10);
+            setChainId(chainIdNum);
+            setIsConnectedToStory(isStoryChain(chainIdNum));
+          }
         } catch (error) {
           console.error('Error al verificar la red:', error);
         }

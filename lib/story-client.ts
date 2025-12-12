@@ -84,13 +84,11 @@ export async function registerIP(params: RegisterIPParams): Promise<RegisterIPRe
     const response = await client.ipAsset.register({
       nftContract: params.nftContract as `0x${string}`,
       tokenId: BigInt(params.tokenId),
-      metadata: {
-        metadataURI: '', // Se llenará con IPFS URI
-        metadataHash: '', // Hash del metadata
-        nftMetadataHash: '', // Hash del NFT metadata
-      },
-      txOptions: {
-        waitForTransaction: true,
+      ipMetadata: {
+        ipMetadataURI: '', // Se llenará con IPFS URI
+        ipMetadataHash: '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+        nftMetadataURI: '',
+        nftMetadataHash: '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
       },
     });
 
@@ -117,9 +115,6 @@ export async function attachLicenseTerms(
     const response = await client.license.attachLicenseTerms({
       ipId: ipId as `0x${string}`,
       licenseTermsId: BigInt(licenseTermsId),
-      txOptions: {
-        waitForTransaction: true,
-      },
     });
 
     return response.txHash || '';
@@ -131,8 +126,9 @@ export async function attachLicenseTerms(
 
 /**
  * Obtiene información de un IP registrado
+ * NOTA: API temporalmente deshabilitada - el método get() no existe en la versión actual del SDK
  */
-export async function getIPDetails(ipId: string) {
+/* export async function getIPDetails(ipId: string) {
   const client = getStoryClient();
 
   try {
@@ -142,12 +138,13 @@ export async function getIPDetails(ipId: string) {
     console.error('Error obteniendo detalles del IP:', error);
     throw error;
   }
-}
+} */
 
 /**
  * Crea términos de licencia personalizados con precio
+ * NOTA: API temporalmente deshabilitada - cambios en la firma del método registerCommercialUsePIL
  */
-export async function createLicenseTerms(params: {
+/* export async function createLicenseTerms(params: {
   transferable: boolean;
   commercialUse: boolean;
   commercialRevShare: number;
@@ -168,7 +165,7 @@ export async function createLicenseTerms(params: {
     console.error('Error creando términos de licencia:', error);
     throw error;
   }
-}
+} */
 
 /**
  * Crea un nuevo SPG NFT Collection

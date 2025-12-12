@@ -18,7 +18,11 @@ export default function WalletInfo() {
 
           // Obtener chain ID
           const network = await primaryWallet.connector.getNetwork();
-          setChainId(network);
+          if (typeof network === 'number') {
+            setChainId(network);
+          } else if (typeof network === 'string') {
+            setChainId(parseInt(network, 10));
+          }
         } catch (error) {
           console.error('Error al obtener información de la wallet:', error);
         }
