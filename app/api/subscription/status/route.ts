@@ -67,16 +67,30 @@ export async function POST(request: NextRequest) {
 
     const subscription = subscriptions.data[0];
 
-    // Acceder a la propiedad usando bracket notation para evitar errores de TypeScript
-    const periodEnd = (subscription as any).current_period_end;
+    // Acceder a current_period_end o usar billing_cycle_anchor como fallback
+    let periodEnd = (subscription as any).current_period_end;
 
-    // Log para debugging
-    console.log('📊 Subscription data:', {
-      id: subscription.id,
-      status: subscription.status,
-      current_period_end: periodEnd,
-      metadata: subscription.metadata,
-    });
+    // Si current_period_end no existe, calcular desde billing_cycle_anchor o created
+    if (!periodEnd) {
+      const anchorTimestamp = (subscription as any).billing_cycle_anchor || subscription.created;
+
+      // Obtener el intervalo del plan (mensual, anual, etc.)
+      const planInterval = subscription.items?.data?.[0]?.price?.recurring?.interval;
+      const intervalCount = subscription.items?.data?.[0]?.price?.recurring?.interval_count || 1;
+
+      // Calcular el siguiente período basado en el intervalo
+      let monthsToAdd = 1; // default: mensual
+      if (planInterval === 'year') {
+        monthsToAdd = 12 * intervalCount;
+      } else if (planInterval === 'month') {
+        monthsToAdd = intervalCount;
+      }
+
+      // Calcular timestamp del final del período
+      const anchorDate = new Date(anchorTimestamp * 1000);
+      anchorDate.setMonth(anchorDate.getMonth() + monthsToAdd);
+      periodEnd = Math.floor(anchorDate.getTime() / 1000);
+    }
 
     const planName = subscription.metadata?.planName as 'CREADOR' | 'PROFESIONAL' | 'ELITE';
 
