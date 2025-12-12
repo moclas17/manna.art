@@ -2,24 +2,10 @@
 
 import Header from '@/components/Header';
 import Gallery from '@/components/Gallery';
-import Dashboard from '@/components/Dashboard';
-import { useSubscription } from '@/hooks/useSubscription';
 import Link from 'next/link';
 
 export default function Home() {
-  const { hasActiveSubscription } = useSubscription();
-
-  // Si el usuario tiene suscripción, mostrar el dashboard
-  if (hasActiveSubscription) {
-    return (
-      <>
-        <Header />
-        <Dashboard />
-      </>
-    );
-  }
-
-  // Si no tiene suscripción, mostrar el marketplace público
+  // Página de inicio pública - marketplace de arte digital
   return (
     <>
       <Header />

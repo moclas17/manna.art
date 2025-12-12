@@ -37,12 +37,20 @@ export default function Header() {
                 Inicio
               </Link>
               {user && primaryWallet && (
-                <Link
-                  href="/my-artworks"
-                  className={`nav-link ${pathname === '/my-artworks' ? 'active' : ''}`}
-                >
-                  Mis Obras
-                </Link>
+                <>
+                  <Link
+                    href="/workspace"
+                    className={`nav-link ${pathname === '/workspace' ? 'active' : ''}`}
+                  >
+                    Workspace
+                  </Link>
+                  <Link
+                    href="/my-artworks"
+                    className={`nav-link ${pathname === '/my-artworks' ? 'active' : ''}`}
+                  >
+                    Mis Obras
+                  </Link>
+                </>
               )}
               <Link
                 href="/pricing"
