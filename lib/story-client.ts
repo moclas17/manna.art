@@ -170,7 +170,7 @@ export async function attachLicenseTerms(
 /**
  * Crea un nuevo SPG NFT Collection
  * Esto te permite tener tu propio contrato SPG con control total sobre los permisos
- * 
+ *
  * @param params - Parámetros para crear la colección
  * @returns La dirección del contrato SPG creado y el hash de la transacción
  */
@@ -224,7 +224,7 @@ export async function createSPGCollection(params: {
 /**
  * Autoriza una wallet para mintear en tu SPG NFT Collection
  * Solo el owner del contrato SPG puede autorizar wallets
- * 
+ *
  * @param spgNftContract - Dirección del contrato SPG
  * @param minterAddress - Dirección de la wallet a autorizar
  * @param authorized - true para autorizar, false para revocar
@@ -245,11 +245,11 @@ export async function setMintAuthorized(
     // El SDK no tiene un método directo para setMintAuthorized
     // Necesitamos usar el cliente de SPG directamente
     const spgNftClient = client.ipAsset.spgNftClient;
-    
+
     // Necesitamos usar el cliente de escritura, no el de solo lectura
     // Esto requiere acceso al wallet client del SDK
     // Por ahora, proporcionamos la información de cómo hacerlo manualmente
-    
+
     console.log(`
 ⚠️ NOTA: El SDK no expone directamente setMintAuthorized.
 Para autorizar la wallet, puedes:
@@ -280,7 +280,7 @@ Para autorizar la wallet, puedes:
 
 /**
  * Verifica si una wallet está autorizada para mintear en un SPG
- * 
+ *
  * @param spgNftContract - Dirección del contrato SPG
  * @param minterAddress - Dirección de la wallet a verificar
  * @returns true si está autorizada, false si no
@@ -298,7 +298,7 @@ export async function isMintAuthorized(
     console.log(`🔍 Verificando autorización para mintear...`);
     console.log(`📍 Contrato SPG: ${spgNftContract}`);
     console.log(`👤 Wallet: ${minterAddress}`);
-    
+
     // TODO: Implementar lectura del contrato usando el ABI
     // Por ahora, el usuario puede verificar manualmente en Storyscan
     console.log(`
@@ -399,13 +399,13 @@ export async function mintAndRegisterIP(params: {
     };
   } catch (error: any) {
     console.error('❌ Error minteando y registrando IP:', error);
-    
+
     // Proporcionar información más útil sobre el error de autorización
-    if (error?.message?.includes('Workflow__CallerNotAuthorizedToMint') || 
+    if (error?.message?.includes('Workflow__CallerNotAuthorizedToMint') ||
         error?.shortMessage?.includes('Workflow__CallerNotAuthorizedToMint')) {
       const walletAddress = getServerWalletAddress();
       const isCustomSPG = process.env.SPG_NFT_CONTRACT !== undefined;
-      
+
       const errorMessage = `
 ❌ ERROR DE AUTORIZACIÓN EN STORY PROTOCOL
 
@@ -418,20 +418,20 @@ SOLUCIONES:
 
 OPCIÓN 1 - Crear tu propio SPG (RECOMENDADO):
   Esto te da control total sobre los permisos de minteo.
-  
+
   1. Ejecuta el script: npx tsx scripts/create-spg.ts
      O usa la API: POST /api/spg/create
-  
+
   2. Agrega la variable de entorno:
      SPG_NFT_CONTRACT=<dirección_del_contrato>
-  
+
   3. Como owner de tu SPG, puedes autorizar wallets fácilmente
 
 OPCIÓN 2 - Autorizar en el SPG actual:
-  ${isCustomSPG ? 
+  ${isCustomSPG ?
     `Como owner de tu SPG (${SPG_NFT_CONTRACT}), puedes autorizar la wallet usando:
   setMintAuthorized(${walletAddress || 'WALLET_ADDRESS'}, true)
-  
+
   Puedes hacerlo desde Storyscan o usando un script con el ABI del contrato.` :
     `El SPG público requiere que el owner del contrato te autorice.
   Contacta al owner del contrato SPG o crea tu propio SPG.`}
@@ -441,7 +441,67 @@ Documentación: https://docs.story.foundation/concepts/spg/overview
       console.error(errorMessage);
       throw new Error(`Wallet no autorizada para mintear. ${isCustomSPG ? 'Autoriza la wallet en tu SPG personalizado' : 'Considera crear tu propio SPG para tener control total'}.`);
     }
-    
+
+    throw error;
+  }
+}
+
+/**
+ * Mintea y registra un derivative IP (remix) basado en un parent IP
+ * Esto crea un NFT derivado y lo registra en Story Protocol con relación al IP original
+ */
+export async function mintAndRegisterDerivativeIP(params: {
+  parentIpId: string;
+  recipient: `0x${string}`;
+  metadataURI: string;
+  licenseFeeUSDC?: bigint;
+  commercialRevShare?: number;
+}): Promise<{
+  ipId: string;
+  tokenId: string;
+  txHash: string;
+}> {
+  const client = getStoryClient();
+
+  try {
+    console.log('🎨 Minteando derivative IP (remix)...');
+    console.log(`   📍 Parent IP ID: ${params.parentIpId}`);
+    console.log(`   👤 Recipient: ${params.recipient}`);
+    const metadataPreview = params.metadataURI.length > 100 ? params.metadataURI.substring(0, 100) + '...' : params.metadataURI;
+    console.log(`   📋 Metadata URI: ${metadataPreview}`);
+
+    const parentIpId = params.parentIpId as `0x${string}`;
+
+    // IMPORTANTE: Para crear un derivative, debemos usar los license terms que ya tiene el parent IP
+    // No podemos crear nuevos license terms, debemos heredar los del parent
+    console.log('🔍 Obteniendo license terms del parent IP...');
+
+    // Usar el método de registro de derivative que hereda automáticamente los license terms del parent
+    // Story Protocol permite que los derivatives hereden los términos del parent sin necesidad de especificar licenseTermsIds
+    const response = await client.ipAsset.mintAndRegisterIpAndMakeDerivative({
+      spgNftContract: SPG_NFT_CONTRACT,
+      derivData: {
+        parentIpIds: [parentIpId],
+        licenseTermsIds: [], // Dejar vacío para heredar automáticamente los términos del parent
+      },
+      ipMetadata: {
+        ipMetadataURI: params.metadataURI,
+        ipMetadataHash: '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+        nftMetadataURI: params.metadataURI,
+        nftMetadataHash: '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+      },
+      recipient: params.recipient,
+    });
+
+    console.log('✅ Derivative IP registrado en Story Protocol:', response);
+
+    return {
+      ipId: response.ipId || '',
+      tokenId: response.tokenId?.toString() || '',
+      txHash: response.txHash || '',
+    };
+  } catch (error: any) {
+    console.error('❌ Error minteando derivative IP:', error);
     throw error;
   }
 }

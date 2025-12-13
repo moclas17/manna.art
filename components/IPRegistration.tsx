@@ -25,7 +25,7 @@ export default function IPRegistration({ subscription }: IPRegistrationProps) {
     description: '',
     fileType: 'image',
     file: null as File | null,
-    licenseFee: '0', // Precio de licencia en ETH
+    licenseFee: '0', // Precio de licencia en USD
     commercialRevShare: '10', // Porcentaje de royalty por defecto 10%
   });
   const [loading, setLoading] = useState(false);

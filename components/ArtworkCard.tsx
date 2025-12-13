@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface Artwork {
   id: string;
@@ -13,15 +15,30 @@ interface Artwork {
   createdAt: string;
   likes: number;
   views: number;
+  ipId?: string;
+  nftTokenId?: string;
 }
 
 interface ArtworkCardProps {
   artwork: Artwork;
+  showRemixButton?: boolean;
 }
 
-export default function ArtworkCard({ artwork }: ArtworkCardProps) {
+export default function ArtworkCard({ artwork, showRemixButton = true }: ArtworkCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [isRemixing, setIsRemixing] = useState(false);
+  const [showRemixModal, setShowRemixModal] = useState(false);
+  const [remixTitle, setRemixTitle] = useState('');
+  const [remixDescription, setRemixDescription] = useState('');
+  const [remixIpType, setRemixIpType] = useState('image');
+  const [remixFile, setRemixFile] = useState<File | null>(null);
+  const [remixFilePreview, setRemixFilePreview] = useState<string>('');
+  const [remixLicenseFee, setRemixLicenseFee] = useState('0');
+  const [remixCommercialRevShare, setRemixCommercialRevShare] = useState('10');
+
+  const { user, primaryWallet } = useDynamicContext();
+  const { subscription } = useSubscription();
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -53,6 +70,106 @@ export default function ArtworkCard({ artwork }: ArtworkCardProps) {
     }
   };
 
+  const canRemix = () => {
+    // Verificar que el usuario esté conectado
+    if (!user || !primaryWallet) return false;
+
+    // Verificar que tenga membresía activa
+    if (!subscription || subscription.status !== 'active') return false;
+
+    // Verificar que la obra tenga ipId (esté registrada en Story Protocol)
+    if (!artwork.ipId) return false;
+
+    // Verificar que no sea su propia obra
+    if (artwork.creatorWallet.toLowerCase() === primaryWallet.address.toLowerCase()) return false;
+
+    return true;
+  };
+
+  const handleRemixClick = () => {
+    if (!canRemix()) {
+      if (!user || !primaryWallet) {
+        alert('Debes conectar tu wallet para hacer un remix');
+        return;
+      }
+      if (!subscription || subscription.status !== 'active') {
+        alert('Necesitas una membresía activa para hacer remixes');
+        window.location.href = '/pricing';
+        return;
+      }
+      if (!artwork.ipId) {
+        alert('Esta obra no está registrada en Story Protocol y no puede ser remixada');
+        return;
+      }
+      return;
+    }
+
+    setShowRemixModal(true);
+    setRemixTitle(`Remix: ${artwork.title}`);
+    setRemixDescription(`Basado en: ${artwork.description}`);
+    setRemixIpType(artwork.ipType);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setRemixFile(file);
+
+      // Crear preview para imágenes
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setRemixFilePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setRemixFilePreview('');
+      }
+    }
+  };
+
+  const handleRemixSubmit = async () => {
+    if (!remixTitle.trim() || !remixDescription.trim() || !remixFile) {
+      alert('Por favor completa todos los campos y sube un archivo');
+      return;
+    }
+
+    setIsRemixing(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('parentIpId', artwork.ipId!);
+      formData.append('title', remixTitle);
+      formData.append('description', remixDescription);
+      formData.append('ipType', remixIpType);
+      formData.append('file', remixFile);
+      formData.append('walletAddress', primaryWallet?.address || '');
+      formData.append('email', user?.email || '');
+      formData.append('licenseFee', remixLicenseFee);
+      formData.append('commercialRevShare', remixCommercialRevShare);
+
+      const response = await fetch('/api/remix', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error al crear el remix');
+      }
+
+      const data = await response.json();
+      alert('¡Remix creado exitosamente! Redirigiendo a tus obras...');
+      window.location.href = '/my-artworks';
+    } catch (error: any) {
+      console.error('Error creating remix:', error);
+      alert(`Error al crear el remix: ${error.message}`);
+    } finally {
+      setIsRemixing(false);
+      setShowRemixModal(false);
+    }
+  };
+
   return (
     <>
       <div className="artwork-card">
@@ -79,14 +196,25 @@ export default function ArtworkCard({ artwork }: ArtworkCardProps) {
             </div>
           )}
           <div className="artwork-overlay">
-            <a
-              href={artwork.fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="view-btn"
-            >
-              Ver en Arweave
-            </a>
+            <div className="overlay-buttons">
+              <a
+                href={artwork.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="view-btn"
+              >
+                Ver en Arweave
+              </a>
+              {showRemixButton && artwork.ipId && (
+                <button
+                  onClick={handleRemixClick}
+                  className="remix-btn"
+                  disabled={!canRemix()}
+                >
+                  🎨 Remix
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -136,6 +264,134 @@ export default function ArtworkCard({ artwork }: ArtworkCardProps) {
           </div>
         </div>
       </div>
+
+      {/* Modal de Remix */}
+      {showRemixModal && (
+        <div className="modal-overlay" onClick={() => setShowRemixModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Crear Remix</h2>
+              <button className="close-btn" onClick={() => setShowRemixModal(false)}>
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <p className="remix-info">
+                Vas a crear un remix de <strong>{artwork.title}</strong>.
+                Este remix será registrado como un derivative NFT en Story Protocol.
+              </p>
+
+              <div className="form-group">
+                <label htmlFor="remix-file">Archivo del Remix *</label>
+                <input
+                  id="remix-file"
+                  type="file"
+                  onChange={handleFileChange}
+                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+                  disabled={isRemixing}
+                  className="file-input"
+                />
+                {remixFilePreview && (
+                  <div className="file-preview">
+                    <img src={remixFilePreview} alt="Preview" />
+                  </div>
+                )}
+                {remixFile && (
+                  <p className="file-name">{remixFile.name}</p>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="remix-type">Tipo de IP</label>
+                <select
+                  id="remix-type"
+                  value={remixIpType}
+                  onChange={(e) => setRemixIpType(e.target.value)}
+                  disabled={isRemixing}
+                >
+                  <option value="image">Imagen</option>
+                  <option value="video">Video</option>
+                  <option value="audio">Audio</option>
+                  <option value="document">Documento</option>
+                  <option value="3d">Modelo 3D</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="remix-title">Título del Remix *</label>
+                <input
+                  id="remix-title"
+                  type="text"
+                  value={remixTitle}
+                  onChange={(e) => setRemixTitle(e.target.value)}
+                  placeholder="Título de tu remix"
+                  disabled={isRemixing}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="remix-description">Descripción *</label>
+                <textarea
+                  id="remix-description"
+                  value={remixDescription}
+                  onChange={(e) => setRemixDescription(e.target.value)}
+                  placeholder="Describe tu remix"
+                  rows={4}
+                  disabled={isRemixing}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="remix-license-fee">Precio de Licencia (USD)</label>
+                <input
+                  id="remix-license-fee"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={remixLicenseFee}
+                  onChange={(e) => setRemixLicenseFee(e.target.value)}
+                  placeholder="10"
+                  disabled={isRemixing}
+                />
+                <p className="field-hint">Precio en USD que otros pagarán por usar tu remix comercialmente</p>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="remix-rev-share">Porcentaje de Royalty (%)</label>
+                <input
+                  id="remix-rev-share"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={remixCommercialRevShare}
+                  onChange={(e) => setRemixCommercialRevShare(e.target.value)}
+                  placeholder="10"
+                  disabled={isRemixing}
+                />
+                <p className="field-hint">Porcentaje de ingresos que recibirás de obras derivadas de tu remix</p>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                className="cancel-btn"
+                onClick={() => setShowRemixModal(false)}
+                disabled={isRemixing}
+              >
+                Cancelar
+              </button>
+              <button
+                className="submit-btn"
+                onClick={handleRemixSubmit}
+                disabled={isRemixing}
+              >
+                {isRemixing ? 'Creando Remix...' : 'Crear Remix'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .artwork-card {
@@ -231,7 +487,12 @@ export default function ArtworkCard({ artwork }: ArtworkCardProps) {
         .artwork-card:hover .artwork-overlay {
           opacity: 1;
         }
-        .view-btn {
+        .overlay-buttons {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        .view-btn, .remix-btn {
           padding: 0.75rem 1.5rem;
           background: #ffe152;
           color: #030a18;
@@ -239,10 +500,18 @@ export default function ArtworkCard({ artwork }: ArtworkCardProps) {
           font-weight: 600;
           border-radius: 0.28rem;
           transition: all 0.2s ease;
+          border: none;
+          cursor: pointer;
+          font-size: 0.9375rem;
+          text-align: center;
         }
-        .view-btn:hover {
+        .view-btn:hover, .remix-btn:hover:not(:disabled) {
           background: #ffd93d;
           transform: scale(1.05);
+        }
+        .remix-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
         .artwork-info {
           padding: 1.5rem;
@@ -322,6 +591,176 @@ export default function ArtworkCard({ artwork }: ArtworkCardProps) {
         }
         .metadata-link:hover {
           color: #ffe152;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(3, 10, 24, 0.8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 1rem;
+        }
+        .modal-content {
+          background: #ffffff;
+          border-radius: 0.5rem;
+          max-width: 500px;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+        }
+        .modal-header {
+          padding: 1.5rem;
+          border-bottom: 1px solid rgba(3, 10, 24, 0.08);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .modal-header h2 {
+          margin: 0;
+          font-size: 1.5rem;
+          color: #030a18;
+        }
+        .close-btn {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          color: #666666;
+          cursor: pointer;
+          padding: 0;
+          width: 2rem;
+          height: 2rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 0.25rem;
+          transition: all 0.2s ease;
+        }
+        .close-btn:hover {
+          background: rgba(3, 10, 24, 0.05);
+          color: #030a18;
+        }
+        .modal-body {
+          padding: 1.5rem;
+        }
+        .remix-info {
+          margin: 0 0 1.5rem 0;
+          padding: 1rem;
+          background: #fcf5e7;
+          border-radius: 0.28rem;
+          font-size: 0.9375rem;
+          color: #666666;
+          line-height: 1.5;
+        }
+        .remix-info strong {
+          color: #030a18;
+        }
+        .form-group {
+          margin-bottom: 1.5rem;
+        }
+        .form-group label {
+          display: block;
+          margin-bottom: 0.5rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #030a18;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+          width: 100%;
+          padding: 0.75rem;
+          border: 1px solid rgba(3, 10, 24, 0.12);
+          border-radius: 0.28rem;
+          font-size: 0.9375rem;
+          font-family: inherit;
+          transition: all 0.2s ease;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+          outline: none;
+          border-color: #ffe152;
+          box-shadow: 0 0 0 3px rgba(255, 225, 82, 0.1);
+        }
+        .form-group input:disabled,
+        .form-group textarea:disabled,
+        .form-group select:disabled {
+          background: rgba(3, 10, 24, 0.03);
+          cursor: not-allowed;
+        }
+        .file-input {
+          padding: 0.5rem;
+          cursor: pointer;
+        }
+        .file-preview {
+          margin-top: 1rem;
+          border-radius: 0.28rem;
+          overflow: hidden;
+          max-width: 100%;
+        }
+        .file-preview img {
+          width: 100%;
+          height: auto;
+          max-height: 300px;
+          object-fit: contain;
+          background: rgba(3, 10, 24, 0.03);
+        }
+        .file-name {
+          margin-top: 0.5rem;
+          font-size: 0.875rem;
+          color: #666666;
+          word-break: break-all;
+        }
+        .field-hint {
+          margin-top: 0.5rem;
+          font-size: 0.8125rem;
+          color: #999999;
+          line-height: 1.4;
+        }
+        .modal-footer {
+          padding: 1.5rem;
+          border-top: 1px solid rgba(3, 10, 24, 0.08);
+          display: flex;
+          gap: 1rem;
+          justify-content: flex-end;
+        }
+        .cancel-btn,
+        .submit-btn {
+          padding: 0.75rem 1.5rem;
+          border-radius: 0.28rem;
+          font-weight: 600;
+          font-size: 0.9375rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: none;
+        }
+        .cancel-btn {
+          background: transparent;
+          color: #666666;
+          border: 1px solid rgba(3, 10, 24, 0.12);
+        }
+        .cancel-btn:hover:not(:disabled) {
+          background: rgba(3, 10, 24, 0.03);
+          color: #030a18;
+        }
+        .submit-btn {
+          background: #ffe152;
+          color: #030a18;
+        }
+        .submit-btn:hover:not(:disabled) {
+          background: #ffd93d;
+        }
+        .cancel-btn:disabled,
+        .submit-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
       `}</style>
     </>

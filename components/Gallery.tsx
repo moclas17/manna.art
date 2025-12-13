@@ -14,6 +14,8 @@ interface Artwork {
   createdAt: string;
   likes: number;
   views: number;
+  ipId?: string;
+  nftTokenId?: string;
 }
 
 export default function Gallery() {

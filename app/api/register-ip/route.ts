@@ -3,7 +3,6 @@ import { uploadFile, uploadMetadata } from '@/lib/arweave-client';
 import { mintAndRegisterIP, IPMetadata } from '@/lib/story-client';
 import { addArtwork } from '@/lib/artworks-db';
 import Stripe from 'stripe';
-import { parseEther } from 'viem';
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('STRIPE_SECRET_KEY no está configurada');
@@ -31,7 +30,7 @@ export async function POST(request: NextRequest) {
     const ipType = formData.get('ipType') as string;
     const file = formData.get('file') as File;
     const walletAddress = formData.get('walletAddress') as string;
-    const licenseFeeEth = formData.get('licenseFee') as string; // Precio de licencia en ETH
+    const licenseFeeUSD = formData.get('licenseFee') as string; // Precio de licencia en USD
     const commercialRevShare = formData.get('commercialRevShare') as string; // Porcentaje de royalty
 
     console.log('📝 Registro de IP solicitado:', {
@@ -39,7 +38,7 @@ export async function POST(request: NextRequest) {
       title,
       ipType,
       walletAddress,
-      licenseFeeEth,
+      licenseFeeUSD,
       commercialRevShare
     });
 
@@ -147,7 +146,7 @@ export async function POST(request: NextRequest) {
     console.log('📋 Datos para Story Protocol:', {
       metadataURI: metadataUploadResult.url,
       recipient: walletAddress,
-      licenseFeeEth,
+      licenseFeeUSD,
       commercialRevShare,
     });
 
@@ -156,12 +155,14 @@ export async function POST(request: NextRequest) {
     let storyTxHash: string | null = null;
 
     try {
-      // Convertir el precio de licencia de ETH a wei
-      const licenseFeeWei = licenseFeeEth ? parseEther(licenseFeeEth) : BigInt(0);
+      // Convertir el precio de licencia de USD a unidades USDC (6 decimales)
+      // USDC tiene 6 decimales, así que multiplicamos por 1,000,000
+      const licenseFeeAmount = licenseFeeUSD ? BigInt(Math.floor(parseFloat(licenseFeeUSD) * 1_000_000)) : BigInt(0);
       const revSharePercent = commercialRevShare ? parseInt(commercialRevShare) : 0;
 
       console.log('🔢 Valores convertidos:', {
-        licenseFeeWei: licenseFeeWei.toString(),
+        licenseFeeUSD,
+        licenseFeeAmount: licenseFeeAmount.toString(),
         revSharePercent,
       });
 
@@ -169,7 +170,7 @@ export async function POST(request: NextRequest) {
       const storyResult = await mintAndRegisterIP({
         metadataURI: metadataUploadResult.url,
         recipient: walletAddress as `0x${string}`,
-        licenseFeeUSDC: licenseFeeWei,
+        licenseFeeUSDC: licenseFeeAmount,
         commercialRevShare: revSharePercent,
       });
 
@@ -201,6 +202,8 @@ export async function POST(request: NextRequest) {
       metadataId: metadataUploadResult.id,
       creatorWallet: walletAddress,
       creatorEmail: email,
+      ipId: storyIpId || undefined,
+      nftTokenId: storyTokenId || undefined,
     });
 
     console.log('✅ Obra guardada en la base de datos:', artwork.id);

@@ -15,6 +15,8 @@ export interface Artwork {
   createdAt: string;
   likes: number;
   views: number;
+  ipId?: string; // IP ID de Story Protocol
+  nftTokenId?: string; // Token ID del NFT en el contrato SPG
 }
 
 const DB_PATH = path.join(process.cwd(), 'data', 'artworks.json');
