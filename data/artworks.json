@@ -14,6 +14,48 @@
     "likes": 0,
     "views": 0,
     "ipId": "0xBA8E2293960dB60D532a1166d962D5Db0D6963A9",
-    "nftTokenId": "5"
+    "nftTokenId": "5",
+    "licenseTermsIds": [
+      "28412"
+    ]
+  },
+  {
+    "title": "Rock 02",
+    "description": "Rock 02",
+    "ipType": "image",
+    "fileUrl": "https://arweave.net/S8CbdrZc8A0yr2siWXpk7aGWTCD-vkL6qOO510MpaMs",
+    "fileId": "S8CbdrZc8A0yr2siWXpk7aGWTCD-vkL6qOO510MpaMs",
+    "metadataUrl": "https://arweave.net/LzHNi7kDUx0TTYCyvkfOMYuH5-cqwy9XBvinxbKiXW4",
+    "metadataId": "LzHNi7kDUx0TTYCyvkfOMYuH5-cqwy9XBvinxbKiXW4",
+    "creatorWallet": "0x0e88AC34917a6BF5E36bFdc2C6C658E58078A1e6",
+    "creatorEmail": "erik.valle@gmail.com",
+    "ipId": "0x755AF3A507159223b5813dF0067de697f2C1c24F",
+    "nftTokenId": "6",
+    "id": "artwork_1765592139270_jz2ot6uiw",
+    "createdAt": "2025-12-13T02:15:39.270Z",
+    "likes": 0,
+    "views": 0,
+    "licenseTermsIds": [
+      "28413"
+    ]
+  },
+  {
+    "title": "Remix: Rock 02",
+    "description": "Basado en: Rock 02",
+    "ipType": "image",
+    "fileUrl": "https://arweave.net/5fpieIDVpna9jnCfInGxSD8cjmgWfw-HFvd5JP2g2bI",
+    "fileId": "5fpieIDVpna9jnCfInGxSD8cjmgWfw-HFvd5JP2g2bI",
+    "metadataUrl": "https://arweave.net/ZhnTj7V1_o4I2FL6lyj4SxQQKc3DzrkCS0UgCrWX0xk",
+    "metadataId": "ZhnTj7V1_o4I2FL6lyj4SxQQKc3DzrkCS0UgCrWX0xk",
+    "creatorWallet": "0x96E97f239984f6F1EC17BdC24Fa495a84A6A526a",
+    "creatorEmail": "erik.valle+manna.art@gmail.com",
+    "ipId": "0x48833ca0edd91404E930A17B6CeFAB4849198135",
+    "nftTokenId": "7",
+    "id": "artwork_1765592259661_n0g19jami",
+    "createdAt": "2025-12-13T02:17:39.661Z",
+    "likes": 0,
+    "views": 0,
+    "parentIpId": "0x755AF3A507159223b5813dF0067de697f2C1c24F",
+    "isRemix": true
   }
 ]

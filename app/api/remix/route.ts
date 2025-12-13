@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadFile, uploadMetadata } from '@/lib/arweave-client';
 import { mintAndRegisterDerivativeIP, IPMetadata } from '@/lib/story-client';
-import { addArtwork } from '@/lib/artworks-db';
+import { addArtwork, getArtworkByIpId } from '@/lib/artworks-db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,6 +35,30 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // 0. Obtener el parent artwork de la base de datos para acceder a sus licenseTermsIds
+    console.log('🔍 Buscando parent artwork en la base de datos...');
+    const parentArtwork = getArtworkByIpId(parentIpId);
+
+    if (!parentArtwork) {
+      return NextResponse.json(
+        { error: `No se encontró el artwork parent con ipId: ${parentIpId}` },
+        { status: 404 }
+      );
+    }
+
+    if (!parentArtwork.licenseTermsIds || parentArtwork.licenseTermsIds.length === 0) {
+      return NextResponse.json(
+        { error: `El artwork parent no tiene license terms. No se pueden crear derivatives.` },
+        { status: 400 }
+      );
+    }
+
+    console.log('✅ Parent artwork encontrado:', {
+      id: parentArtwork.id,
+      title: parentArtwork.title,
+      licenseTermsIds: parentArtwork.licenseTermsIds,
+    });
 
     // 1. Subir el archivo del remix a Arweave
     console.log('📤 Subiendo archivo del remix a Arweave...');
@@ -92,6 +116,7 @@ export async function POST(request: NextRequest) {
       parentIpId,
       recipient: walletAddress as `0x${string}`,
       metadataURI: metadataUploadResult.url,
+      parentLicenseTermsIds: parentArtwork.licenseTermsIds, // Usar los license terms del parent
       licenseFeeUSDC: licenseFeeAmount,
       commercialRevShare: revSharePercent,
     });
@@ -116,6 +141,8 @@ export async function POST(request: NextRequest) {
       creatorEmail: email,
       ipId: result.ipId,
       nftTokenId: result.tokenId,
+      parentIpId: parentIpId, // Guardar el parent IP ID
+      isRemix: true, // Marcar como remix
     });
 
     console.log('✅ Remix guardado en la base de datos:', artwork.id);

@@ -17,6 +17,9 @@ export interface Artwork {
   views: number;
   ipId?: string; // IP ID de Story Protocol
   nftTokenId?: string; // Token ID del NFT en el contrato SPG
+  licenseTermsIds?: string[]; // IDs de los license terms adjuntos (para crear derivatives)
+  parentIpId?: string; // IP ID del parent (si es un remix/derivative)
+  isRemix?: boolean; // Flag para indicar que es un remix
 }
 
 const DB_PATH = path.join(process.cwd(), 'data', 'artworks.json');
@@ -72,6 +75,12 @@ export function addArtwork(artwork: Omit<Artwork, 'id' | 'createdAt' | 'likes' |
 export function getArtworkById(id: string): Artwork | null {
   const artworks = getAllArtworks();
   return artworks.find(a => a.id === id) || null;
+}
+
+// Obtener obra por IP ID de Story Protocol
+export function getArtworkByIpId(ipId: string): Artwork | null {
+  const artworks = getAllArtworks();
+  return artworks.find(a => a.ipId === ipId) || null;
 }
 
 // Obtener obras por creador

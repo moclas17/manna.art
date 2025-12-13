@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { useSubscription } from '@/hooks/useSubscription';
 
@@ -17,6 +17,9 @@ interface Artwork {
   views: number;
   ipId?: string;
   nftTokenId?: string;
+  licenseTermsIds?: string[];
+  parentIpId?: string;
+  isRemix?: boolean;
 }
 
 interface ArtworkCardProps {
@@ -36,9 +39,30 @@ export default function ArtworkCard({ artwork, showRemixButton = true }: Artwork
   const [remixFilePreview, setRemixFilePreview] = useState<string>('');
   const [remixLicenseFee, setRemixLicenseFee] = useState('0');
   const [remixCommercialRevShare, setRemixCommercialRevShare] = useState('10');
+  const [parentArtwork, setParentArtwork] = useState<Artwork | null>(null);
 
   const { user, primaryWallet } = useDynamicContext();
   const { subscription } = useSubscription();
+
+  // Cargar información del parent artwork si es un remix
+  useEffect(() => {
+    const loadParentArtwork = async () => {
+      if (artwork.isRemix && artwork.parentIpId) {
+        try {
+          const response = await fetch('/api/artworks');
+          const data = await response.json();
+          const parent = data.artworks.find((a: Artwork) => a.ipId === artwork.parentIpId);
+          if (parent) {
+            setParentArtwork(parent);
+          }
+        } catch (error) {
+          console.error('Error cargando parent artwork:', error);
+        }
+      }
+    };
+
+    loadParentArtwork();
+  }, [artwork.isRemix, artwork.parentIpId]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -174,6 +198,11 @@ export default function ArtworkCard({ artwork, showRemixButton = true }: Artwork
     <>
       <div className="artwork-card">
         <div className="artwork-image-container">
+          {artwork.isRemix && (
+            <div className="remix-ribbon">
+              🎨 Remix
+            </div>
+          )}
           {!imageError && artwork.ipType === 'image' ? (
             <>
               {!imageLoaded && (
@@ -227,16 +256,45 @@ export default function ArtworkCard({ artwork, showRemixButton = true }: Artwork
           </p>
 
           <div className="artwork-meta">
-            <div className="creator-info">
-              <span className="creator-label">Creador:</span>
-              <a
-                href={`https://etherscan.io/address/${artwork.creatorWallet}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="creator-address"
-              >
-                {shortenAddress(artwork.creatorWallet)}
-              </a>
+            <div className="creators-section">
+              {artwork.isRemix && parentArtwork ? (
+                <div className="creators-row">
+                  <div className="creator-info">
+                    <span className="creator-label">Remixeado por</span>
+                    <a
+                      href={`https://etherscan.io/address/${artwork.creatorWallet}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="creator-address"
+                    >
+                      {shortenAddress(artwork.creatorWallet)}
+                    </a>
+                  </div>
+                  <div className="creator-info">
+                    <span className="creator-label">Original de</span>
+                    <a
+                      href={`https://etherscan.io/address/${parentArtwork.creatorWallet}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="creator-address"
+                    >
+                      {shortenAddress(parentArtwork.creatorWallet)}
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="creator-info">
+                  <span className="creator-label">Creador</span>
+                  <a
+                    href={`https://etherscan.io/address/${artwork.creatorWallet}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="creator-address"
+                  >
+                    {shortenAddress(artwork.creatorWallet)}
+                  </a>
+                </div>
+              )}
             </div>
 
             <div className="artwork-stats">
@@ -411,7 +469,7 @@ export default function ArtworkCard({ artwork, showRemixButton = true }: Artwork
           width: 100%;
           padding-top: 100%;
           background: rgba(3, 10, 24, 0.03);
-          overflow: hidden;
+          overflow: visible;
         }
         .image-placeholder {
           position: absolute;
@@ -529,13 +587,47 @@ export default function ArtworkCard({ artwork, showRemixButton = true }: Artwork
           line-height: 1.5;
           margin: 0 0 1rem 0;
         }
+        .remix-ribbon {
+          position: absolute;
+          top: 12px;
+          left: -8px;
+          z-index: 10;
+          padding: 0.5rem 1rem;
+          background: linear-gradient(135deg, #ffe152 0%, #ffd93d 100%);
+          color: #030a18;
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        .remix-ribbon::before {
+          content: '';
+          position: absolute;
+          bottom: -8px;
+          left: 0;
+          width: 0;
+          height: 0;
+          border-left: 8px solid #d4a600;
+          border-bottom: 8px solid transparent;
+        }
         .artwork-meta {
           display: flex;
-          justify-content: space-between;
-          align-items: center;
+          flex-direction: column;
+          gap: 0.75rem;
           padding-bottom: 1rem;
           border-bottom: 1px solid rgba(3, 10, 24, 0.06);
           margin-bottom: 1rem;
+        }
+        .creators-section {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+        .creators-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1rem;
         }
         .creator-info {
           display: flex;
@@ -547,6 +639,7 @@ export default function ArtworkCard({ artwork, showRemixButton = true }: Artwork
           color: #999999;
           text-transform: uppercase;
           letter-spacing: 0.05em;
+          font-weight: 600;
         }
         .creator-address {
           font-size: 0.875rem;

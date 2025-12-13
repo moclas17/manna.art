@@ -454,6 +454,7 @@ export async function mintAndRegisterDerivativeIP(params: {
   parentIpId: string;
   recipient: `0x${string}`;
   metadataURI: string;
+  parentLicenseTermsIds: string[]; // License terms IDs del parent IP
   licenseFeeUSDC?: bigint;
   commercialRevShare?: number;
 }): Promise<{
@@ -472,17 +473,24 @@ export async function mintAndRegisterDerivativeIP(params: {
 
     const parentIpId = params.parentIpId as `0x${string}`;
 
-    // IMPORTANTE: Para crear un derivative, debemos usar los license terms que ya tiene el parent IP
-    // No podemos crear nuevos license terms, debemos heredar los del parent
-    console.log('🔍 Obteniendo license terms del parent IP...');
+    // IMPORTANTE: Usar los license terms IDs que fueron adjuntos al parent IP cuando se registró
+    // Estos IDs los obtenemos de nuestra base de datos donde los guardamos al crear el parent
+    console.log('📋 License Terms IDs del parent IP:', params.parentLicenseTermsIds);
 
-    // Usar el método de registro de derivative que hereda automáticamente los license terms del parent
-    // Story Protocol permite que los derivatives hereden los términos del parent sin necesidad de especificar licenseTermsIds
+    if (!params.parentLicenseTermsIds || params.parentLicenseTermsIds.length === 0) {
+      throw new Error(`No se proporcionaron license terms IDs del parent IP ${parentIpId}. No se pueden crear derivatives sin license terms.`);
+    }
+
+    // Convertir los IDs a BigInt para la SDK
+    const licenseTermsIds = params.parentLicenseTermsIds.map(id => BigInt(id));
+    console.log(`✅ Usando License Terms IDs: ${licenseTermsIds.join(', ')}`);
+
+    // Registrar el derivative IP usando los license terms del parent
     const response = await client.ipAsset.mintAndRegisterIpAndMakeDerivative({
       spgNftContract: SPG_NFT_CONTRACT,
       derivData: {
         parentIpIds: [parentIpId],
-        licenseTermsIds: [], // Dejar vacío para heredar automáticamente los términos del parent
+        licenseTermsIds: licenseTermsIds, // Usar los license terms del parent
       },
       ipMetadata: {
         ipMetadataURI: params.metadataURI,

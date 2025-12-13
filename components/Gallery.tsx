@@ -16,6 +16,9 @@ interface Artwork {
   views: number;
   ipId?: string;
   nftTokenId?: string;
+  licenseTermsIds?: string[];
+  parentIpId?: string;
+  isRemix?: boolean;
 }
 
 export default function Gallery() {

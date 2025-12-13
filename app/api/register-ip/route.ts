@@ -153,6 +153,7 @@ export async function POST(request: NextRequest) {
     let storyIpId: string | null = null;
     let storyTokenId: string | null = null;
     let storyTxHash: string | null = null;
+    let storyLicenseTermsIds: string[] | undefined = undefined;
 
     try {
       // Convertir el precio de licencia de USD a unidades USDC (6 decimales)
@@ -177,11 +178,13 @@ export async function POST(request: NextRequest) {
       storyIpId = storyResult.ipId;
       storyTokenId = storyResult.tokenId;
       storyTxHash = storyResult.txHash;
+      const storyLicenseTermsIds = storyResult.licenseTermsIds;
 
       console.log('✅ IP registrado en Story Protocol:', {
         ipId: storyIpId,
         tokenId: storyTokenId,
         txHash: storyTxHash,
+        licenseTermsIds: storyLicenseTermsIds,
       });
     } catch (storyError: any) {
       console.error('⚠️ Error registrando en Story Protocol:', storyError);
@@ -204,6 +207,7 @@ export async function POST(request: NextRequest) {
       creatorEmail: email,
       ipId: storyIpId || undefined,
       nftTokenId: storyTokenId || undefined,
+      licenseTermsIds: storyLicenseTermsIds,
     });
 
     console.log('✅ Obra guardada en la base de datos:', artwork.id);
