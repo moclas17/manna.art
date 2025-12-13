@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
       storyIpId = storyResult.ipId;
       storyTokenId = storyResult.tokenId;
       storyTxHash = storyResult.txHash;
-      const storyLicenseTermsIds = storyResult.licenseTermsIds;
+      storyLicenseTermsIds = storyResult.licenseTermsIds;
 
       console.log('✅ IP registrado en Story Protocol:', {
         ipId: storyIpId,
