@@ -129,6 +129,11 @@ export async function addArtwork(artwork: Omit<Artwork, 'id' | 'createdAt' | 'li
     };
 
     if (usePostgres) {
+      // Convert array to Postgres ARRAY format
+      const licenseTermsValue = newArtwork.licenseTermsIds
+        ? `{${newArtwork.licenseTermsIds.map(id => `"${id}"`).join(',')}}`
+        : null;
+
       await sql`
         INSERT INTO artworks (
           id, title, description, ip_type, file_url, file_id,
@@ -151,7 +156,7 @@ export async function addArtwork(artwork: Omit<Artwork, 'id' | 'createdAt' | 'li
           ${newArtwork.views},
           ${newArtwork.ipId || null},
           ${newArtwork.nftTokenId || null},
-          ${newArtwork.licenseTermsIds ? JSON.stringify(newArtwork.licenseTermsIds) : null}::text[],
+          ${licenseTermsValue},
           ${newArtwork.parentIpId || null},
           ${newArtwork.isRemix || false}
         )
