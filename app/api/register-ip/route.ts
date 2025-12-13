@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
 
     // 6. Guardar la obra en la base de datos
     console.log('💾 Guardando obra en la base de datos...');
-    const artwork = addArtwork({
+    const artwork = await addArtwork({
       title,
       description,
       ipType,

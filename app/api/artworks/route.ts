@@ -11,14 +11,14 @@ export async function GET(request: NextRequest) {
 
     switch (filter) {
       case 'popular':
-        artworks = getPopularArtworks(limit);
+        artworks = await getPopularArtworks(limit);
         break;
       case 'all':
-        artworks = getAllArtworks();
+        artworks = await getAllArtworks();
         break;
       case 'recent':
       default:
-        artworks = getRecentArtworks(limit);
+        artworks = await getRecentArtworks(limit);
         break;
     }
 

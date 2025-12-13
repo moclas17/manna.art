@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     // 0. Obtener el parent artwork de la base de datos para acceder a sus licenseTermsIds
     console.log('🔍 Buscando parent artwork en la base de datos...');
-    const parentArtwork = getArtworkByIpId(parentIpId);
+    const parentArtwork = await getArtworkByIpId(parentIpId);
 
     if (!parentArtwork) {
       return NextResponse.json(
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
 
     // 4. Guardar el remix en la base de datos
     console.log('💾 Guardando remix en la base de datos...');
-    const artwork = addArtwork({
+    const artwork = await addArtwork({
       title,
       description,
       ipType,
