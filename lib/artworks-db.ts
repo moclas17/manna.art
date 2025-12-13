@@ -27,6 +27,10 @@ const DB_PATH = path.join(process.cwd(), 'data', 'artworks.json');
 const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
 const usePostgres = isProduction && process.env.POSTGRES_URL;
 
+// Database Strategy:
+// - Development: Uses local JSON file for easy testing
+// - Production (Vercel): Uses Postgres to avoid read-only filesystem errors
+
 // Inicializar la tabla en Postgres si no existe
 async function initPostgresTable() {
   if (!usePostgres) return;
